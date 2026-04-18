@@ -188,7 +188,7 @@ struct SettingsView: View {
                     HapticFeedback.shared.triggerImpactFeedback()
                     disconnectRelay()
                 }
-            } else if codex.hasTrustedMacReconnectCandidate {
+            } else if codex.hasTrustedMacReconnectCandidate && !AppEnvironment.isDedicatedBootstrapBuild {
                 SettingsButton("Forget Pair", role: .destructive) {
                     HapticFeedback.shared.triggerImpactFeedback()
                     codex.forgetTrustedMac()

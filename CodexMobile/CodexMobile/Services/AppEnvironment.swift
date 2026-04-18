@@ -30,6 +30,10 @@ enum AppEnvironment {
         return CodexDedicatedBootstrapConfig.decode(fromInfoPlistValue: rawValue)
     }
 
+    static var isDedicatedBootstrapBuild: Bool {
+        dedicatedBootstrapConfig != nil
+    }
+
     // 设置页里的法律链接统一指向仓库中的公开文档。
     static let privacyPolicyURL = URL(
         string: "https://github.com/Emanuele-web04/remodex/blob/main/Legal/PRIVACY_POLICY.md"

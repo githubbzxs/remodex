@@ -10,6 +10,7 @@ import UIKit
 struct BridgeUpdateSheet: View {
     let prompt: CodexBridgeUpdatePrompt
     let isRetrying: Bool
+    let showsScanNewQRAction: Bool
     let onRetry: () -> Void
     let onScanNewQR: () -> Void
     let onDismiss: () -> Void
@@ -105,15 +106,17 @@ struct BridgeUpdateSheet: View {
                     .buttonStyle(.plain)
                     .disabled(isRetrying)
 
-                    Button("Scan New QR Code", action: onScanNewQR)
-                        .font(AppFont.body(weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(Color(.secondarySystemFill))
-                        )
-                        .buttonStyle(.plain)
+                    if showsScanNewQRAction {
+                        Button("Scan New QR Code", action: onScanNewQR)
+                            .font(AppFont.body(weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .fill(Color(.secondarySystemFill))
+                            )
+                            .buttonStyle(.plain)
+                    }
 
                     Button("Not Now", role: .cancel, action: onDismiss)
                         .font(AppFont.subheadline(weight: .medium))

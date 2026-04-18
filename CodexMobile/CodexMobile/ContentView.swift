@@ -69,6 +69,14 @@ struct ContentView: View {
     private let whatsNewReleaseVersion = "1.1"
     private static let sidebarSpring = Animation.spring(response: 0.35, dampingFraction: 0.85)
 
+    private var shouldBypassPairingOnboarding: Bool {
+        AppEnvironment.isDedicatedBootstrapBuild
+    }
+
+    private var hasCompletedInitialSetup: Bool {
+        hasSeenOnboarding || shouldBypassPairingOnboarding
+    }
+
     var body: some View {
         rootContentWithBannerOverlay
     }
@@ -78,8 +86,8 @@ struct ContentView: View {
         rootContent
             // Only resume saved-pairing recovery after onboarding is done and the manual scanner is not in control.
             .task {
-                guard hasSeenOnboarding, !isShowingManualScanner else {
-                    debugSidebarLog("launch task skipped onboardingSeen=\(hasSeenOnboarding) manualScanner=\(isShowingManualScanner)")
+                guard hasCompletedInitialSetup, !isShowingManualScanner else {
+                    debugSidebarLog("launch task skipped onboardingSeen=\(hasCompletedInitialSetup) manualScanner=\(isShowingManualScanner)")
                     return
                 }
                 debugSidebarLog("launch task autoConnect begin connected=\(codex.isConnected) threadCount=\(codex.threads.count)")
@@ -147,7 +155,7 @@ struct ContentView: View {
                 codex.setForegroundState(phase != .background)
                 if phase == .active {
                     Task {
-                        guard hasSeenOnboarding, !isShowingManualScanner else {
+                        guard hasCompletedInitialSetup, !isShowingManualScanner else {
                             return
                         }
 
@@ -261,7 +269,7 @@ struct ContentView: View {
 
     @ViewBuilder
     private var rootContent: some View {
-        if !hasSeenOnboarding {
+        if !hasCompletedInitialSetup {
             OnboardingView {
                 finishOnboardingAndShowScanner()
             }
@@ -407,9 +415,9 @@ struct ContentView: View {
                 statusMessage: codex.lastErrorMessage,
                 securityLabel: codex.secureConnectionState.statusLabel,
                 trustedPairPresentation: codex.trustedPairPresentation,
-                offlinePrimaryButtonTitle: codex.hasReconnectCandidate ? "Reconnect" : "Scan QR Code",
+                offlinePrimaryButtonTitle: shouldPreferReconnectPrimaryAction ? "Reconnect" : "Scan QR Code",
                 onPrimaryAction: {
-                    if homeConnectionPhase == .offline && !codex.hasReconnectCandidate {
+                    if homeConnectionPhase == .offline && !shouldPreferReconnectPrimaryAction {
                         presentAutomaticScanner()
                         return
                     }
@@ -490,7 +498,7 @@ struct ContentView: View {
     // Keeps the silent wake fallback automatic exactly once per offline cycle before the user taps manually again.
     private var shouldAttemptAutomaticWakeSavedMacDisplay: Bool {
         scenePhase == .active
-            && hasSeenOnboarding
+            && hasCompletedInitialSetup
             && !isShowingManualScanner
             && !isShowingManualPairingEntry
             && codex.shouldAutoReconnectOnForeground
@@ -522,7 +530,7 @@ struct ContentView: View {
     // Keeps foreground reconnect and the one-shot wake fallback in the same guarded path.
     private func attemptSavedMacReconnectRecoveryIfNeeded() async {
         guard scenePhase == .active,
-              hasSeenOnboarding,
+              hasCompletedInitialSetup,
               !isShowingManualScanner,
               !isShowingManualPairingEntry else {
             return
@@ -714,11 +722,19 @@ struct ContentView: View {
             return true
         }
 
+        if shouldBypassPairingOnboarding {
+            return false
+        }
+
         if viewModel.isAttemptingAutoReconnect || shouldShowReconnectShell || isPreparingManualScanner {
             return false
         }
 
         return !codex.hasReconnectCandidate && !hasDismissedAutomaticScanner
+    }
+
+    private var shouldPreferReconnectPrimaryAction: Bool {
+        codex.hasReconnectCandidate || shouldBypassPairingOnboarding
     }
 
     // Shows the remembered pairing shell while a saved pairing can still be retried.
@@ -791,13 +807,13 @@ struct ContentView: View {
     // doesn't pay the full mount/grouping cost in the animation frame budget.
     private func scheduleSidebarPrewarmIfNeeded() {
         guard scenePhase == .active,
-              hasSeenOnboarding,
+              hasCompletedInitialSetup,
               !isShowingManualScanner,
               !isSidebarPrewarmed,
               sidebarPrewarmTask == nil,
               (codex.isConnected || !codex.threads.isEmpty) else {
             debugSidebarLog(
-                "prewarm skipped phase=\(String(describing: scenePhase)) onboarding=\(hasSeenOnboarding) "
+                "prewarm skipped phase=\(String(describing: scenePhase)) onboarding=\(hasCompletedInitialSetup) "
                     + "scanner=\(isShowingManualScanner) "
                     + "prewarmed=\(isSidebarPrewarmed) taskActive=\(sidebarPrewarmTask != nil) "
                     + "connected=\(codex.isConnected) threadCount=\(codex.threads.count)"
@@ -811,7 +827,7 @@ struct ContentView: View {
             try? await Task.sleep(nanoseconds: sidebarPrewarmDelayNanoseconds)
             guard !Task.isCancelled,
                   scenePhase == .active,
-                  hasSeenOnboarding,
+                  hasCompletedInitialSetup,
                   !isShowingManualScanner,
                   !isSidebarOpen,
                   sidebarDragOffset == 0,
@@ -953,7 +969,7 @@ struct ContentView: View {
     // 当引导、配对或根级警报占用界面时，拦截更低优先级的弹窗。
     private var canPresentDeferredRootSheet: Bool {
         scenePhase == .active
-            && hasSeenOnboarding
+            && hasCompletedInitialSetup
             && !isShowingManualScanner
             && !shouldShowQRScanner
             && !isShowingManualPairingEntry
@@ -974,7 +990,7 @@ struct ContentView: View {
     private var whatsNewPresentationScheduleFingerprint: String {
         [
             String(scenePhase == .active),
-            String(hasSeenOnboarding),
+            String(hasCompletedInitialSetup),
             String(isShowingManualScanner),
             String(shouldShowQRScanner),
             String(isShowingManualPairingEntry),
@@ -1058,6 +1074,7 @@ struct ContentView: View {
         BridgeUpdateSheet(
             prompt: prompt,
             isRetrying: isRetryingBridgeUpdate,
+            showsScanNewQRAction: !shouldBypassPairingOnboarding,
             onRetry: {
                 retryBridgeConnectionAfterUpdate()
             },
@@ -1156,33 +1173,39 @@ struct ContentView: View {
             isShowingManualScanner = false
             hasDismissedAutomaticScanner = false
             scannerCanReturnToOnboarding = false
-            hasSeenOnboarding = false
+            hasSeenOnboarding = shouldBypassPairingOnboarding
         }
     }
 
     // Keeps QR and code recovery as one quiet secondary row under the main reconnect CTA.
     private var reconnectSecondaryActions: some View {
         HStack(spacing: 10) {
-            secondaryReconnectActionButton("New QR Code") {
-                presentManualScannerAfterStoppingReconnect()
-            }
-            .disabled(isPreparingManualScanner)
+            if !shouldBypassPairingOnboarding {
+                secondaryReconnectActionButton("New QR Code") {
+                    presentManualScannerAfterStoppingReconnect()
+                }
+                .disabled(isPreparingManualScanner)
 
-            secondaryReconnectActionButton("Pair with Code") {
-                presentManualPairingEntryAfterStoppingReconnect()
+                secondaryReconnectActionButton("Pair with Code") {
+                    presentManualPairingEntryAfterStoppingReconnect()
+                }
+                .disabled(isPreparingManualScanner || isResolvingManualPairingCode)
             }
-            .disabled(isPreparingManualScanner || isResolvingManualPairingCode)
         }
     }
 
     // Keeps the destructive saved-pair action visually separate from the reconnect controls.
     private var reconnectFooterAction: some View {
-        Button("Forget Pair") {
-            codex.forgetReconnectCandidate()
+        Group {
+            if !shouldBypassPairingOnboarding {
+                Button("Forget Pair") {
+                    codex.forgetReconnectCandidate()
+                }
+                .font(AppFont.caption(weight: .semibold))
+                .foregroundStyle(.secondary)
+                .buttonStyle(.plain)
+            }
         }
-        .font(AppFont.caption(weight: .semibold))
-        .foregroundStyle(.secondary)
-        .buttonStyle(.plain)
     }
 
     // Mirrors the reconnect button corner language in a lighter outline-only treatment.
