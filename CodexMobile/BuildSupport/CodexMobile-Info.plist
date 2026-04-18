@@ -66,6 +66,8 @@
 	<string>$(PHODEX_CHATGPT_CALLBACK_SCHEME)</string>
 	<key>PHODEX_DEFAULT_RELAY_URL</key>
 	<string>$(PHODEX_DEFAULT_RELAY_URL)</string>
+	<key>PHODEX_DEDICATED_BOOTSTRAP_CONFIG_B64</key>
+	<string>$(PHODEX_DEDICATED_BOOTSTRAP_CONFIG_B64)</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>JetBrainsMono-Regular.ttf</string>

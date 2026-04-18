@@ -2,3 +2,4 @@
 // Xcode will load the private file automatically when it exists.
 
 PHODEX_DEFAULT_RELAY_URL =
+PHODEX_DEDICATED_BOOTSTRAP_CONFIG_B64 =

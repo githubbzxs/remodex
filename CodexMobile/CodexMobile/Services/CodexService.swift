@@ -718,6 +718,7 @@ final class CodexService {
             self.lastAppliedBridgeOutboundSeq = parsedLastAppliedSeq
         }
         self.remoteNotificationDeviceToken = SecureStore.readString(for: CodexSecureKeys.pushDeviceToken)
+        applyDedicatedBootstrapConfigurationIfPresent()
         if let relayMacDeviceId,
            let trustedMac = trustedMacRegistry.records[relayMacDeviceId] {
             self.secureConnectionState = .trustedMac

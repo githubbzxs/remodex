@@ -89,6 +89,8 @@ mkdir -p "${OUTPUT_DIR}"
 
 ensure_app_icon_set
 
+bash "${SCRIPT_DIR}/prepare-private-overrides.sh"
+
 echo "开始构建未签名 IPA"
 echo "PROJECT_PATH=${PROJECT_PATH}"
 echo "SCHEME=${SCHEME}"

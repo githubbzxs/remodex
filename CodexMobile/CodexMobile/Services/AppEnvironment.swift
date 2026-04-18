@@ -8,6 +8,7 @@ import Foundation
 
 enum AppEnvironment {
     private static let defaultRelayURLInfoPlistKey = "PHODEX_DEFAULT_RELAY_URL"
+    private static let dedicatedBootstrapConfigInfoPlistKey = "PHODEX_DEDICATED_BOOTSTRAP_CONFIG_B64"
     private static let supportEmailAddress = "emandipietro@gmail.com"
 
     // Open-source builds should provide an explicit relay instead of silently
@@ -19,6 +20,14 @@ enum AppEnvironment {
             return infoURL
         }
         return defaultRelayURLString
+    }
+
+    static var dedicatedBootstrapConfig: CodexDedicatedBootstrapConfig? {
+        guard let rawValue = resolvedString(forInfoPlistKey: dedicatedBootstrapConfigInfoPlistKey) else {
+            return nil
+        }
+
+        return CodexDedicatedBootstrapConfig.decode(fromInfoPlistValue: rawValue)
     }
 
     // 设置页里的法律链接统一指向仓库中的公开文档。

@@ -24,6 +24,12 @@ jobs:
         working-directory: CodexMobile
         run: xcodebuild -resolvePackageDependencies -project CodexMobile.xcodeproj -scheme CodexMobile
 
+      - name: 生成私有覆盖配置
+        env:
+          PHODEX_DEFAULT_RELAY_URL: ${{ secrets.PHODEX_DEFAULT_RELAY_URL }}
+          PHODEX_DEDICATED_BOOTSTRAP_CONFIG_B64: ${{ secrets.PHODEX_DEDICATED_BOOTSTRAP_CONFIG_B64 }}
+        run: bash CodexMobile/scripts/prepare-private-overrides.sh
+
       - name: 构建未签名 IPA
         run: bash CodexMobile/scripts/build-unsigned-ipa.sh
 
