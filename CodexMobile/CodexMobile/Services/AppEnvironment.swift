@@ -56,9 +56,15 @@ private extension AppEnvironment {
             return nil
         }
 
-        let trimmedValue = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        var trimmedValue = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedValue.isEmpty else {
             return nil
+        }
+
+        if trimmedValue.hasPrefix("\""), trimmedValue.hasSuffix("\""), trimmedValue.count >= 2 {
+            trimmedValue.removeFirst()
+            trimmedValue.removeLast()
+            trimmedValue = trimmedValue.trimmingCharacters(in: .whitespacesAndNewlines)
         }
 
         if trimmedValue.hasPrefix("$("), trimmedValue.hasSuffix(")") {
