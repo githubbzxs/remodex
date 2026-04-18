@@ -6,6 +6,7 @@
 
 import UIKit
 
+@MainActor
 struct TurnComposerRuntimeMenuBuilder {
     let runtimeState: TurnComposerRuntimeState
     let runtimeActions: TurnComposerRuntimeActions
