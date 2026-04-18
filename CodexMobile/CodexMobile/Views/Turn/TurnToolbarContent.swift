@@ -115,12 +115,6 @@ struct TurnToolbarContent: ToolbarContent {
             }
         }
 
-        if showsThreadActions, hasTrailingCluster {
-            if #available(iOS 26.0, *) {
-                ToolbarSpacer(.fixed, placement: .topBarTrailing)
-            }
-        }
-
         if repoDiffTotals != nil || showsGitActions {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if let repoDiffTotals {

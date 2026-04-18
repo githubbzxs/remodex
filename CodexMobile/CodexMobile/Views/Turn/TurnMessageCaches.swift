@@ -218,7 +218,8 @@ enum MessageRowRenderModelCache {
     private static func buildModel(for message: CodexMessage, displayText: String) -> MessageRowRenderModel {
         switch message.role {
         case .assistant:
-            let codeCommentContent = CodeCommentDirectiveContentCache.content(messageID: message.id, text: displayText)
+            let parsedCodeCommentContent = CodeCommentDirectiveContentCache.content(messageID: message.id, text: displayText)
+            let codeCommentContent = parsedCodeCommentContent.hasFindings ? parsedCodeCommentContent : nil
             let mermaidContent = message.isStreaming
                 ? nil
                 : MermaidMarkdownContentCache.content(
