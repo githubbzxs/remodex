@@ -195,6 +195,45 @@ extension CodexService {
         receiveNextManualChunk(on: connection)
     }
 
+    func sendKeepAlivePing() async throws {
+        if usesManualWebSocketTransport {
+            guard let connection = webSocketConnection else {
+                throw CodexServiceError.disconnected
+            }
+            try await sendManualWebSocketFrame(opcode: 0x9, payload: Data(), on: connection)
+            return
+        }
+
+        if let task = webSocketTask {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                task.sendPing { error in
+                    if let error {
+                        continuation.resume(throwing: error)
+                    } else {
+                        continuation.resume(returning: ())
+                    }
+                }
+            }
+            return
+        }
+
+        guard let connection = webSocketConnection else {
+            throw CodexServiceError.disconnected
+        }
+
+        let metadata = NWProtocolWebSocket.Metadata(opcode: .ping)
+        let context = NWConnection.ContentContext(identifier: "codex-keepalive-ping", metadata: [metadata])
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            connection.send(content: nil, contentContext: context, isComplete: true, completion: .contentProcessed { error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: ())
+                }
+            })
+        }
+    }
+
     func receiveNextMessage(on connection: NWConnection) {
         connection.receiveMessage { [weak self] data, context, _, error in
             guard let self else { return }

@@ -851,14 +851,18 @@ extension CodexService {
         }
     }
 
-    // Starts or ends the iOS grace window that lets a just-backgrounded run finish cleanly.
+    private var shouldKeepConnectionAliveInBackground: Bool {
+        !isAppInForeground && isConnected
+    }
+
+    // Starts or ends the iOS grace window that lets a just-backgrounded connection stay warm briefly.
     func updateBackgroundRunGraceTask() {
         guard !isAppInForeground else {
             endBackgroundRunGraceTask(reason: "foreground")
             return
         }
 
-        guard hasAnyRunningTurn else {
+        guard shouldKeepConnectionAliveInBackground || hasAnyRunningTurn else {
             endBackgroundRunGraceTask(reason: "idle")
             return
         }
@@ -867,7 +871,7 @@ extension CodexService {
             return
         }
 
-        let taskID = UIApplication.shared.beginBackgroundTask(withName: "CodexRunGrace") { [weak self] in
+        let taskID = UIApplication.shared.beginBackgroundTask(withName: "CodexConnectionGrace") { [weak self] in
             Task { @MainActor [weak self] in
                 self?.endBackgroundRunGraceTask(reason: "expired")
             }
@@ -880,17 +884,53 @@ extension CodexService {
 
         backgroundTurnGraceTaskID = taskID
         debugSyncLog("background run grace task started")
+        startBackgroundConnectionKeepAliveIfNeeded()
     }
 
     func endBackgroundRunGraceTask(reason: String) {
         guard backgroundTurnGraceTaskID != .invalid else {
+            backgroundConnectionKeepAliveTask?.cancel()
+            backgroundConnectionKeepAliveTask = nil
             return
         }
 
         let taskID = backgroundTurnGraceTaskID
         backgroundTurnGraceTaskID = .invalid
         UIApplication.shared.endBackgroundTask(taskID)
+        backgroundConnectionKeepAliveTask?.cancel()
+        backgroundConnectionKeepAliveTask = nil
         debugSyncLog("background run grace task ended reason=\(reason)")
+    }
+
+    func startBackgroundConnectionKeepAliveIfNeeded() {
+        guard shouldKeepConnectionAliveInBackground else {
+            backgroundConnectionKeepAliveTask?.cancel()
+            backgroundConnectionKeepAliveTask = nil
+            return
+        }
+
+        guard backgroundConnectionKeepAliveTask == nil else {
+            return
+        }
+
+        backgroundConnectionKeepAliveTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 12_000_000_000)
+                guard !Task.isCancelled else { return }
+                guard self.shouldKeepConnectionAliveInBackground else { return }
+
+                do {
+                    try await self.sendKeepAlivePing()
+                } catch {
+                    if self.isConnected {
+                        self.handleReceiveError(error)
+                    }
+                    return
+                }
+            }
+        }
     }
 
     /// Best-effort server-side archive/unarchive. Failures are logged but never

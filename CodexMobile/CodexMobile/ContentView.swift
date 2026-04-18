@@ -397,7 +397,6 @@ struct ContentView: View {
                 thread: thread,
                 isWakingMacDisplayRecovery: isWakingSavedMacDisplay
             )
-                .id(thread.id)
                 .environment(\.reconnectAction, {
                     Task {
                         await viewModel.toggleConnection(codex: codex)

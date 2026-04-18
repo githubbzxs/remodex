@@ -495,6 +495,7 @@ final class CodexService {
     var lastMirroredRunningCatchupAtByThread: [String: Date] = [:]
     var localNetworkAuthorizationStatus: LocalNetworkAuthorizationStatus = .unknown
     var backgroundTurnGraceTaskID: UIBackgroundTaskIdentifier = .invalid
+    var backgroundConnectionKeepAliveTask: Task<Void, Never>?
     var hasConfiguredNotifications = false
     var runCompletionNotificationDedupedAt: [String: Date] = [:]
     var structuredUserInputNotificationDedupedAt: [String: Date] = [:]

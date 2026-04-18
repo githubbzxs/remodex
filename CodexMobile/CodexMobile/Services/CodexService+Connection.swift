@@ -118,6 +118,7 @@ extension CodexService {
                 )
                 self?.startGPTLoginSyncIfNeeded()
                 await self?.syncBridgeKeepMacAwakePreferenceIfNeeded()
+                self?.updateBackgroundRunGraceTask()
             }
         } catch {
             let shouldResetSavedSession = recordTrustedReconnectFailureIfNeeded(
@@ -164,6 +165,8 @@ extension CodexService {
         runningThreadWatchByID.removeAll()
         clearTransientConnectionPrompts()
         endBackgroundRunGraceTask(reason: "disconnect")
+        backgroundConnectionKeepAliveTask?.cancel()
+        backgroundConnectionKeepAliveTask = nil
         if !preserveReconnectIntent {
             shouldAutoReconnectOnForeground = false
             connectionRecoveryState = .idle
@@ -426,6 +429,8 @@ extension CodexService {
         lastErrorMessage = disposition.lastErrorMessage
         finalizeAllStreamingState()
         endBackgroundRunGraceTask(reason: "receive-error")
+        backgroundConnectionKeepAliveTask?.cancel()
+        backgroundConnectionKeepAliveTask = nil
         clearConnectionSyncState()
         // Thread resumes are transport-scoped; a fresh socket must be allowed to
         // issue `thread/resume` again for desktop-origin threads after recovery.

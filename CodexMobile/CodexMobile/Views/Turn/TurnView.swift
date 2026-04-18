@@ -327,6 +327,9 @@ struct TurnView: View {
         .onChange(of: renderSnapshot.timelineChangeToken) { _, _ in
             viewModel.reconcileDismissedStructuredPlanPrompts(messages: renderSnapshot.messages, codex: codex)
         }
+        .onChange(of: thread.id) { _, _ in
+            resetThreadScopedViewState()
+        }
         .onReceive(voiceTranscriptionManager.$recordingDuration) { duration in
             guard isVoiceRecording,
                   !isVoiceTranscribing,
@@ -440,6 +443,30 @@ struct TurnView: View {
         } message: { alert in
             Text(alert.message)
         }
+    }
+
+    private func resetThreadScopedViewState() {
+        cancelVoiceRecordingIfNeeded()
+        invalidatePendingVoicePreflight()
+        clearVoiceRecovery()
+        viewModel.cancelTransientTasks()
+        viewModel.clearComposerAutocomplete()
+        isInputFocused = false
+        isShowingThreadPathSheet = false
+        isShowingStatusSheet = false
+        repositoryDiffPresentation = nil
+        assistantRevertSheetState = nil
+        alertApprovalRequest = nil
+        isApprovalAlertPresented = false
+        isShowingMacHandoffConfirm = false
+        isShowingWorktreeHandoff = false
+        isShowingForkWorktree = false
+        macHandoffErrorMessage = nil
+        isHandingOffToMac = false
+        isStartingSiblingChat = false
+        isForkingThread = false
+        checkedOutElsewhereAlert = nil
+        isShowingVoiceSetupSheet = false
     }
 
     // Reuses the shared recovery-card slot for both transport reconnects and voice-specific guidance.
