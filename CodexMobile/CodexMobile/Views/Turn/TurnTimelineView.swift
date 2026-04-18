@@ -259,7 +259,7 @@ private struct TurnTimelineToolBurstView: View {
 private struct TurnTimelineRowsSection: View {
     let shouldWarmRecentTailProgressively: Bool
     let hasEarlierMessages: Bool
-    let visibleMessages: ArraySlice<CodexMessage>
+    let renderItems: [TurnTimelineRenderItem]
     let isRetryAvailable: Bool
     let cachedBlockInfoByMessageID: [String: AssistantBlockAccessoryState]
     let planSessionSource: CodexPlanSessionSource?
@@ -273,10 +273,6 @@ private struct TurnTimelineRowsSection: View {
     let onTapAssistantRevert: (CodexMessage) -> Void
     let onTapSubagent: (CodexSubagentThreadPresentation) -> Void
     let onLoadEarlierMessages: () -> Void
-
-    private var renderItems: [TurnTimelineRenderItem] {
-        TurnTimelineRenderProjection.project(messages: Array(visibleMessages))
-    }
 
     var body: some View {
         if shouldWarmRecentTailProgressively {
@@ -442,8 +438,8 @@ struct TurnTimelineView<EmptyState: View, Composer: View>: View {
     @State private var isUserDraggingScroll = false
     @State private var userScrollCooldownUntil: Date?
     @State private var scrollGeometryCoalescer = ScrollGeometryCoalescer()
-    @State private var timelineDebugSequence = 0
-    @State private var lastTimelineGeometryLogBucket: Int?
+    @State private var cachedRenderItems: [TurnTimelineRenderItem] = []
+    @State private var renderProjectionInputKey: Int = -1
 
     /// The tail slice of messages currently rendered in the timeline.
     private var visibleMessages: ArraySlice<CodexMessage> {
@@ -491,6 +487,14 @@ struct TurnTimelineView<EmptyState: View, Composer: View>: View {
         return hasher.finalize()
     }
 
+    private var renderProjectionKeyValue: Int {
+        var hasher = Hasher()
+        hasher.combine(threadID)
+        hasher.combine(timelineChangeToken)
+        hasher.combine(visibleTailCount)
+        return hasher.finalize()
+    }
+
     var body: some View {
         if messages.isEmpty {
             // Keep new/empty chats static to avoid scroll indicators and inert scrolling.
@@ -518,7 +522,7 @@ struct TurnTimelineView<EmptyState: View, Composer: View>: View {
                         TurnTimelineRowsSection(
                             shouldWarmRecentTailProgressively: shouldWarmRecentTailProgressively,
                             hasEarlierMessages: hasEarlierMessages,
-                            visibleMessages: visibleMessages,
+                            renderItems: cachedRenderItems,
                             isRetryAvailable: isRetryAvailable,
                             cachedBlockInfoByMessageID: cachedBlockInfoByMessageID,
                             planSessionSource: planSessionSource,
@@ -562,7 +566,6 @@ struct TurnTimelineView<EmptyState: View, Composer: View>: View {
                 )
                 // Track real scroll phases instead of layering a competing drag gesture on top.
                 .onScrollPhaseChange { oldPhase, newPhase in
-                    debugTimelineLog("scroll phase changed old=\(String(describing: oldPhase)) new=\(String(describing: newPhase))")
                     handleScrollPhaseChange(from: oldPhase, to: newPhase)
                 }
                 .onScrollGeometryChange(for: ScrollBottomGeometry.self) { geometry in
@@ -582,13 +585,11 @@ struct TurnTimelineView<EmptyState: View, Composer: View>: View {
                         contentHeight: geometry.contentSize.height
                     )
                 } action: { old, new in
-                    logTimelineGeometryChangeIfNeeded(old: old, new: new)
                     // Coalesce into a single commit per runloop turn so SwiftUI
                     // sees at most one @State mutation instead of several per frame.
                     scrollGeometryCoalescer.pending = (old, new)
                     guard !scrollGeometryCoalescer.isScheduled else { return }
                     scrollGeometryCoalescer.isScheduled = true
-                    debugTimelineLog("geometry change scheduled for coalesced apply")
                     DispatchQueue.main.async {
                         scrollGeometryCoalescer.isScheduled = false
                         guard let pending = scrollGeometryCoalescer.pending else { return }
@@ -603,40 +604,33 @@ struct TurnTimelineView<EmptyState: View, Composer: View>: View {
                 // Timeline mutations still drive block-info refresh and assistant anchoring,
                 // but geometry decides when follow-bottom should actually fire.
                 .onChange(of: timelineChangeToken) { _, _ in
-                    debugTimelineLog(
-                        "timelineChangeToken changed token=\(timelineChangeToken) "
-                            + "messageCount=\(messages.count) visibleTail=\(visibleTailCount)"
-                    )
+                    recomputeRenderItemsIfNeeded()
                     recomputeBlockInfoIfNeeded()
                     scheduleProgressiveTailRevealIfNeeded()
                     handleTimelineMutation(using: proxy)
                 }
                 .onChange(of: isThreadRunning) { _, _ in
-                    debugTimelineLog("isThreadRunning changed value=\(isThreadRunning)")
                     recomputeBlockInfoIfNeeded()
                 }
                 .onChange(of: threadID) { _, _ in
-                    debugTimelineLog("threadID changed to=\(threadID)")
                     beginScrollSessionIfNeeded(force: true)
+                    recomputeRenderItemsIfNeeded(force: true)
                     recomputeBlockInfoIfNeeded()
                     scheduleProgressiveTailRevealIfNeeded()
                     handleTimelineMutation(using: proxy)
                 }
                 .onChange(of: activeTurnID) { _, _ in
-                    debugTimelineLog("activeTurnID changed to=\(activeTurnID ?? "nil")")
                     recomputeBlockInfoIfNeeded()
                     handleTimelineMutation(using: proxy)
                 }
                 .onChange(of: latestTurnTerminalState) { _, _ in
-                    debugTimelineLog("latestTurnTerminalState changed to=\(String(describing: latestTurnTerminalState))")
                     recomputeBlockInfoIfNeeded()
                 }
                 .onChange(of: stoppedTurnIDs) { _, _ in
-                    debugTimelineLog("stoppedTurnIDs changed count=\(stoppedTurnIDs.count)")
                     recomputeBlockInfoIfNeeded()
                 }
                 .onChange(of: visibleTailCount) { _, _ in
-                    debugTimelineLog("visibleTailCount changed value=\(visibleTailCount) totalMessages=\(messages.count)")
+                    recomputeRenderItemsIfNeeded()
                     recomputeBlockInfoIfNeeded()
                 }
                 .onChange(of: shouldAnchorToAssistantResponse) { _, newValue in
@@ -654,23 +648,29 @@ struct TurnTimelineView<EmptyState: View, Composer: View>: View {
                     })
                 }
                 .onAppear {
-                    debugTimelineLog("onAppear threadID=\(threadID) messageCount=\(messages.count)")
                     beginScrollSessionIfNeeded()
+                    recomputeRenderItemsIfNeeded(force: true)
                     recomputeBlockInfoIfNeeded()
                     scheduleProgressiveTailRevealIfNeeded()
                     handleTimelineMutation(using: proxy)
                 }
                 .onDisappear {
-                    debugTimelineLog("onDisappear threadID=\(threadID)")
                     cancelScrollTasks()
                 }
             }
         }
     }
 
+    private func recomputeRenderItemsIfNeeded(force: Bool = false) {
+        let key = renderProjectionKeyValue
+        guard force || key != renderProjectionInputKey else { return }
+        renderProjectionInputKey = key
+        cachedRenderItems = TurnTimelineRenderProjection.project(messages: Array(visibleMessages))
+    }
+
     private func recomputeBlockInfoIfNeeded() {
         let visible = Array(visibleMessages)
-        let key = blockInfoInputKey(for: visible)
+        let key = blockInfoInputKeyValue
         guard key != blockInfoInputKey else { return }
         blockInfoInputKey = key
 
@@ -699,31 +699,21 @@ struct TurnTimelineView<EmptyState: View, Composer: View>: View {
         }
     }
 
-    // Hashes the fields that change copy-block aggregation or inline action placement.
-    // Include message text too because thread/resume can reconcile completed rows in place.
-    private func blockInfoInputKey(for messages: [CodexMessage]) -> Int {
+    private var blockInfoInputKeyValue: Int {
         var hasher = Hasher()
-        hasher.combine(messages.count)
+        hasher.combine(threadID)
+        hasher.combine(timelineChangeToken)
+        hasher.combine(visibleTailCount)
         hasher.combine(isThreadRunning)
         hasher.combine(activeTurnID)
         hasher.combine(latestTurnTerminalState)
-        hasher.combine(stoppedTurnIDs)
-
-        for message in messages {
-            hasher.combine(message.id)
-            hasher.combine(message.role)
-            hasher.combine(message.kind)
-            hasher.combine(message.turnId)
-            hasher.combine(message.isStreaming)
-            // During streaming, text changes every delta — hash only the length to avoid
-            // O(text_length) hashing per frame. Once finalized, hash full text for reconciliation.
-            if message.isStreaming {
-                hasher.combine(message.text.count)
-            } else {
-                hasher.combine(message.text)
-            }
+        for stoppedTurnID in stoppedTurnIDs.sorted() {
+            hasher.combine(stoppedTurnID)
         }
-
+        for entry in assistantRevertStatesByMessageID.sorted(by: { $0.key < $1.key }) {
+            hasher.combine(entry.key)
+            hasher.combine(entry.value)
+        }
         return hasher.finalize()
     }
     @ViewBuilder
@@ -1308,36 +1298,6 @@ struct TurnTimelineView<EmptyState: View, Composer: View>: View {
            !(isSuppressingBottomCorrectionsForWarmup && !new.isAtBottom) {
             handleScrolledToBottomChanged(new.isAtBottom)
         }
-        debugTimelineLog(
-            "applyScrollGeometryUpdate oldBottom=\(old.isAtBottom) newBottom=\(new.isAtBottom) "
-                + "oldViewport=\(Int(old.viewportHeight)) newViewport=\(Int(new.viewportHeight)) "
-                + "oldContent=\(Int(old.contentHeight)) newContent=\(Int(new.contentHeight)) "
-                + "pinned=\(shouldPinTimelineToBottomDuringGeometryChange) "
-                + "warmupSuppressed=\(isSuppressingBottomCorrectionsForWarmup) "
-                + "userDragging=\(isUserDraggingScroll)"
-        )
-    }
-
-    private func logTimelineGeometryChangeIfNeeded(old: ScrollBottomGeometry, new: ScrollBottomGeometry) {
-        let delta = max(
-            abs(new.contentHeight - old.contentHeight),
-            abs(new.viewportHeight - old.viewportHeight)
-        )
-        let bucket = Int(delta / 20)
-        guard bucket != lastTimelineGeometryLogBucket || new.isAtBottom != old.isAtBottom else {
-            return
-        }
-        lastTimelineGeometryLogBucket = bucket
-        debugTimelineLog(
-            "geometry changed bucket=\(bucket) oldBottom=\(old.isAtBottom) newBottom=\(new.isAtBottom) "
-                + "contentDelta=\(Int(new.contentHeight - old.contentHeight)) "
-                + "viewportDelta=\(Int(new.viewportHeight - old.viewportHeight))"
-        )
-    }
-
-    private func debugTimelineLog(_ message: String) {
-        timelineDebugSequence += 1
-        print("[TimelineDebug] #\(timelineDebugSequence) \(message)")
     }
 }
 

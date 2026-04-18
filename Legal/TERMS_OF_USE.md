@@ -1,6 +1,6 @@
 # Remodex — Terms of Use
 
-**Last updated:** March 25, 2026
+**Last updated:** April 18, 2026
 
 These Terms of Use ("Terms") govern your access to and use of the Remodex mobile application ("App"), developed and published by Emanuele Di Pietro ("Developer", "we", "us", or "our"). By downloading, installing, or using the App, you agree to these Terms. If you do not agree, do not use the App.
 
@@ -8,9 +8,9 @@ These Terms of Use ("Terms") govern your access to and use of the Remodex mobile
 
 ## 1. Description of the App
 
-Remodex is an iOS companion app for controlling a Codex runtime on your Mac. The App can connect to your Mac directly or through a developer-operated hosted relay. Core features include real-time chat, git actions, photo attachments, voice transcription, pairing, trusted reconnect, and subscription-gated functionality.
+Remodex is an iOS companion app for controlling a Codex runtime on your Mac. The App can connect to your Mac directly or through a relay that you configure or operate. Core features include real-time chat, git actions, photo attachments, voice transcription, pairing, and trusted reconnect.
 
-Most coding, repository, and workspace operations run on your paired Mac, not on our hosted relay.
+Most coding, repository, and workspace operations run on your paired Mac, not on any relay.
 
 ## 2. Eligibility
 
@@ -18,94 +18,65 @@ You must be at least 13 years old, or the minimum age required in your jurisdict
 
 ## 3. Pairing and Security
 
-The App does not require a Remodex user account. Instead, it pairs with your Mac through a QR code flow and secure cryptographic session setup. You are responsible for keeping your paired devices secure and for activity performed through your paired environment.
+The App does not require a Remodex user account. Instead, it pairs with your Mac through a QR code flow and secure cryptographic session setup. You are responsible for keeping your paired devices secure, protecting your local runtime environment, and reviewing activity performed through your paired setup.
 
-## 4. Pro Subscription
+## 4. Relay and Network Services
 
-### 4.1 Subscription Features
+Remodex may use a compatible relay to route traffic between your iPhone and paired Mac when direct connectivity is not being used. A relay does not run Codex for you and does not replace your paired Mac runtime.
 
-The App offers an optional Pro subscription. Pro may include features such as:
+You are responsible for the relay endpoint you choose to use, including any third-party or self-hosted infrastructure, network exposure, and access controls associated with that relay.
 
-- faster service tiers or related runtime defaults
-- git actions from iPhone
-- voice transcription
-- subagents and slash-command workflows
-- access to developer-operated hosted relay/connectivity features
+## 5. Third-Party Services
 
-Feature availability can vary based on the connected runtime, platform limitations, and your current build/configuration.
+The App may rely on third-party services, including:
 
-### 4.2 Billing
-
-- Payment is charged to your Apple ID account at confirmation of purchase.
-- Subscriptions renew automatically unless cancelled at least 24 hours before the end of the billing period.
-- Renewal is charged by Apple within 24 hours before the current period ends.
-- You can manage or cancel subscriptions in your Apple account settings.
-
-### 4.3 Trials and Refunds
-
-- If a free trial is offered, any unused portion is forfeited when you purchase a subscription.
-- Refunds are handled by Apple under App Store rules.
-
-## 5. Developer-Operated Services
-
-To provide the App Store experience, Remodex may operate hosted services such as:
-
-- a relay that routes traffic between your iPhone and paired Mac
-- a trusted reconnect endpoint
-
-These services are part of the Remodex product offering. They do not run Codex for you and do not replace your paired Mac runtime.
-
-## 6. Third-Party Services
-
-The App also relies on third-party services, including:
-
-- **Apple** for App Store billing, subscriptions, and platform services
-- **RevenueCat** for subscription/entitlement handling
+- **Apple** for platform services and, where applicable, App Store or TestFlight distribution
 - **OpenAI / ChatGPT** for voice transcription when you use voice mode
+- **A relay operator you choose** when you connect through a non-local relay endpoint
 
 Your use of those services may also be subject to their own terms and privacy policies.
 
-## 7. Acceptable Use
+## 6. Acceptable Use
 
 You agree not to:
 
 - use the App for unlawful purposes
 - interfere with or abuse the App, bridge, relay, or connected runtime
 - transmit malware, harmful payloads, or abusive traffic
-- attempt to bypass security, entitlement, or pairing protections
+- attempt to bypass security or pairing protections
 - use the App to infringe the rights of others
 
-## 8. Open Source
+## 7. Open Source
 
-Remodex includes open-source code and is published in public source form. Source-code use is governed by the applicable repository license. These Terms apply to the distributed mobile application and any related services we operate for it.
+Remodex includes open-source code and is published in public source form. Source-code use is governed by the applicable repository license. These Terms apply to the distributed mobile application and any related services we operate directly.
 
-## 9. Intellectual Property
+## 8. Intellectual Property
 
 The Remodex name, branding, and app presentation are owned by the Developer, except for third-party marks belonging to their respective owners. Nothing in these Terms grants you rights to our branding beyond normal use of the App.
 
-## 10. Availability and Changes
+## 9. Availability and Changes
 
-We may update, change, suspend, or discontinue features of the App, hosted relay, pricing, or subscription offerings at any time. We may also update these Terms, and your continued use after an update constitutes acceptance of the revised Terms.
+We may update, change, suspend, or discontinue features of the App or any services we directly operate at any time. We may also update these Terms, and your continued use after an update constitutes acceptance of the revised Terms.
 
-## 11. Disclaimer of Warranties
+## 10. Disclaimer of Warranties
 
-THE APP AND ANY RELATED SERVICES ARE PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, TO THE MAXIMUM EXTENT PERMITTED BY LAW. WE DO NOT GUARANTEE THAT THE APP, HOSTED RELAY, OR YOUR CONNECTED RUNTIME WILL ALWAYS BE AVAILABLE, ERROR-FREE, OR SECURE.
+THE APP AND ANY RELATED SERVICES ARE PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, TO THE MAXIMUM EXTENT PERMITTED BY LAW. WE DO NOT GUARANTEE THAT THE APP, ANY RELAY, OR YOUR CONNECTED RUNTIME WILL ALWAYS BE AVAILABLE, ERROR-FREE, OR SECURE.
 
-## 12. Limitation of Liability
+## 11. Limitation of Liability
 
 TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE DEVELOPER WILL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR FOR LOSS OF DATA, PROFITS, REVENUE, OR BUSINESS OPPORTUNITY, ARISING FROM OR RELATED TO YOUR USE OF THE APP OR RELATED SERVICES.
 
-TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE DEVELOPER'S TOTAL LIABILITY FOR ANY CLAIM ARISING OUT OF OR RELATING TO THE APP OR RELATED SERVICES WILL NOT EXCEED THE AMOUNT YOU PAID FOR THE APP'S SUBSCRIPTIONS IN THE TWELVE (12) MONTHS BEFORE THE CLAIM.
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE DEVELOPER'S TOTAL LIABILITY FOR ANY CLAIM ARISING OUT OF OR RELATING TO THE APP OR RELATED SERVICES WILL NOT EXCEED THE AMOUNT YOU PAID FOR THE APP, IF ANY, IN THE TWELVE (12) MONTHS BEFORE THE CLAIM.
 
-## 13. Suspension and Termination
+## 12. Suspension and Termination
 
-We may suspend or terminate access to the App's hosted services, or your use of the App, if needed to protect users, infrastructure, legal compliance, or service integrity.
+We may suspend or terminate access to any services we directly operate, or your use of the App, if needed to protect users, infrastructure, legal compliance, or service integrity.
 
-## 14. Governing Law
+## 13. Governing Law
 
 These Terms are governed by the laws of Italy, without regard to conflict-of-law rules. Any dispute relating to these Terms will be resolved in the courts of Italy, unless applicable law requires otherwise.
 
-## 15. Apple App Store Terms
+## 14. Apple App Store Terms
 
 If you obtained the App through the Apple App Store, the following additional terms apply:
 
@@ -119,11 +90,11 @@ If you obtained the App through the Apple App Store, the following additional te
 - You represent and warrant that you are not located in a country subject to a U.S. Government embargo, and that you are not listed on any U.S. Government list of prohibited or restricted parties.
 - Apple and its subsidiaries are third-party beneficiaries of these Terms and may enforce them against you as applicable.
 
-## 16. Severability
+## 15. Severability
 
 If any provision of these Terms is found unenforceable, the remaining provisions will remain in full force and effect.
 
-## 17. Contact
+## 16. Contact
 
 If you have questions about these Terms, you can reach us at:
 

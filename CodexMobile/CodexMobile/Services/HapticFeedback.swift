@@ -1,5 +1,5 @@
 // FILE: HapticFeedback.swift
-// Purpose: Centralized haptic feedback utility for premium button interactions.
+// 用途：统一封装常见按钮交互的触觉反馈工具。
 // Layer: Service
 // Exports: HapticFeedback
 // Depends on: UIKit

@@ -14,6 +14,29 @@ import UIKit
 // plain markdown rows and Mermaid-interleaved markdown segments.
 let enablesInlineMarkdownSelectionInTimeline = false
 
+enum UserBubbleAttributedTextCache {
+    private static let cache = BoundedCache<String, AttributedString>(maxEntries: 256)
+
+    static func text(
+        messageID: String,
+        rawText: String,
+        fileMentions: [String],
+        builder: () -> AttributedString
+    ) -> AttributedString {
+        let mentionsFingerprint = fileMentions.joined(separator: "\u{1F}")
+        let key = [
+            messageID,
+            TurnTextCacheKey.fingerprint(for: rawText),
+            TurnTextCacheKey.fingerprint(for: mentionsFingerprint),
+        ].joined(separator: "|")
+        return cache.getOrSet(key, builder: builder)
+    }
+
+    static func reset() {
+        cache.removeAll()
+    }
+}
+
 // Normalizes streaming placeholders once so assistant rows do not render transient status text
 // like "Thinking..." as if it were final message content.
 func timelineDisplayText(for message: CodexMessage) -> String {
@@ -807,14 +830,19 @@ struct MessageRow: View, Equatable {
             return Text(normalizedRawText)
         }
 
-        return Text(
+        let attributed = UserBubbleAttributedTextCache.text(
+            messageID: message.id,
+            rawText: normalizedRawText,
+            fileMentions: message.fileMentions
+        ) {
             userBubbleAttributedText(
                 from: normalizedRawText,
                 matches: matches,
                 nsText: nsText,
                 confirmedFileMentions: confirmedFileMentions
             )
-        )
+        }
+        return Text(attributed)
     }
 
     private func normalizedMentionToken(_ token: String) -> (token: String, trailingPunctuation: String) {
@@ -911,9 +939,8 @@ struct MessageRow: View, Equatable {
         let commentContent = renderModel.codeCommentContent
         let bodyText = commentContent?.fallbackText ?? text
         let mermaidContent = renderModel.mermaidContent
-        let assistantProposedPlanCandidate = commentContent == nil && mermaidContent == nil
-            ? (message.proposedPlan ?? CodexProposedPlanParser.parse(from: bodyText))
-            : nil
+        let assistantProposedPlanCandidate = renderModel.assistantProposedPlanCandidate
+        let inferredQuestionnaireCandidate = renderModel.assistantInferredQuestionnaireCandidate
         let currentPlanSessionSource = planSessionSource
         let isNativePlanSession = currentPlanSessionSource != nil && currentPlanSessionSource != .compatibilityFallback
         let proposedPlan = !isNativePlanSession
@@ -922,25 +949,19 @@ struct MessageRow: View, Equatable {
                     commentContent == nil
                         && mermaidContent == nil
                         && currentPlanSessionSource == .compatibilityFallback
-                        && InferredPlanQuestionnaireParser.parseAssistantMessage(bodyText) == nil
-                    ? CodexProposedPlanParser.parseAssistantFallback(from: bodyText)
+                        && inferredQuestionnaireCandidate == nil
+                    ? renderModel.assistantFallbackProposedPlan
                             : nil
                 ))
             : nil
-        let renderedPlanText = assistantProposedPlanCandidate == nil
-            ? bodyText
-            : (
-                CodexProposedPlanParser.containsEnvelope(in: bodyText)
-                    ? (CodexProposedPlanParser.removingEnvelope(from: bodyText) ?? "")
-                    : ""
-            )
+        let renderedPlanText = renderModel.assistantRenderedPlanText ?? bodyText
         let inferredQuestionnaire = commentContent == nil
             ? resolvedInferredPlanQuestionnaire(
                 bodyText: bodyText,
                 message: message,
                 threadMessages: threadMessagesForPlanMatching,
                 shouldRecoverFallback: allowsAssistantPlanFallbackRecovery,
-                parse: InferredPlanQuestionnaireParser.parseAssistantMessage
+                parse: { _ in inferredQuestionnaireCandidate }
             )
             : nil
         let visibleAssistantText = renderedPlanText

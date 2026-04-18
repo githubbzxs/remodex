@@ -16,6 +16,7 @@ import Foundation
 enum TurnCacheManager {
     @MainActor static func resetAll() {
         MarkdownParseCacheReset.reset()
+        UserBubbleAttributedTextCache.reset()
         MarkdownRenderableTextCache.reset()
         MessageRowRenderModelCache.reset()
         CommandExecutionStatusCache.reset()
@@ -181,6 +182,10 @@ struct MessageRowRenderModel {
     let thinkingText: String?
     let thinkingActivityPreview: String?
     let commandStatus: CommandExecutionStatusModel?
+    let assistantProposedPlanCandidate: CodexProposedPlan?
+    let assistantFallbackProposedPlan: CodexProposedPlan?
+    let assistantRenderedPlanText: String?
+    let assistantInferredQuestionnaireCandidate: InferredPlanQuestionnaire?
 
     static let empty = MessageRowRenderModel(
         codeCommentContent: nil,
@@ -190,7 +195,11 @@ struct MessageRowRenderModel {
         thinkingContent: nil,
         thinkingText: nil,
         thinkingActivityPreview: nil,
-        commandStatus: nil
+        commandStatus: nil,
+        assistantProposedPlanCandidate: nil,
+        assistantFallbackProposedPlan: nil,
+        assistantRenderedPlanText: nil,
+        assistantInferredQuestionnaireCandidate: nil
     )
 }
 
@@ -209,22 +218,51 @@ enum MessageRowRenderModelCache {
     private static func buildModel(for message: CodexMessage, displayText: String) -> MessageRowRenderModel {
         switch message.role {
         case .assistant:
+            let codeCommentContent = CodeCommentDirectiveContentCache.content(messageID: message.id, text: displayText)
+            let mermaidContent = message.isStreaming
+                ? nil
+                : MermaidMarkdownContentCache.content(
+                    messageID: message.id,
+                    text: displayText
+                )
+            let canParsePlanContent = codeCommentContent == nil && mermaidContent == nil
+            let assistantProposedPlanCandidate = canParsePlanContent
+                ? (message.proposedPlan ?? CodexProposedPlanParser.parse(from: displayText))
+                : nil
+            let assistantInferredQuestionnaireCandidate = canParsePlanContent
+                ? InferredPlanQuestionnaireParser.parseAssistantMessage(displayText)
+                : nil
+            let assistantFallbackProposedPlan = canParsePlanContent
+                && assistantProposedPlanCandidate == nil
+                && assistantInferredQuestionnaireCandidate == nil
+                ? CodexProposedPlanParser.parseAssistantFallback(from: displayText)
+                : nil
+            let assistantRenderedPlanText = canParsePlanContent
+                ? (
+                    assistantProposedPlanCandidate == nil
+                        ? displayText
+                        : (
+                            CodexProposedPlanParser.containsEnvelope(in: displayText)
+                                ? (CodexProposedPlanParser.removingEnvelope(from: displayText) ?? "")
+                                : ""
+                        )
+                )
+                : nil
             // Defer Mermaid parsing until the assistant row is finalized so streaming deltas
             // keep the lightweight markdown path and avoid repeated WebKit churn.
             return MessageRowRenderModel(
-                codeCommentContent: CodeCommentDirectiveContentCache.content(messageID: message.id, text: displayText),
-                mermaidContent: message.isStreaming
-                    ? nil
-                    : MermaidMarkdownContentCache.content(
-                        messageID: message.id,
-                        text: displayText
-                    ),
+                codeCommentContent: codeCommentContent,
+                mermaidContent: mermaidContent,
                 fileChangeState: nil,
                 fileChangeGroups: [],
                 thinkingContent: nil,
                 thinkingText: nil,
                 thinkingActivityPreview: nil,
-                commandStatus: nil
+                commandStatus: nil,
+                assistantProposedPlanCandidate: assistantProposedPlanCandidate,
+                assistantFallbackProposedPlan: assistantFallbackProposedPlan,
+                assistantRenderedPlanText: assistantRenderedPlanText,
+                assistantInferredQuestionnaireCandidate: assistantInferredQuestionnaireCandidate
             )
         case .user:
             return .empty
@@ -245,7 +283,11 @@ enum MessageRowRenderModelCache {
                         : ThinkingDisclosureContentCache.content(messageID: message.id, text: thinkingText),
                     thinkingText: thinkingText,
                     thinkingActivityPreview: thinkingActivityPreview,
-                    commandStatus: nil
+                    commandStatus: nil,
+                    assistantProposedPlanCandidate: nil,
+                    assistantFallbackProposedPlan: nil,
+                    assistantRenderedPlanText: nil,
+                    assistantInferredQuestionnaireCandidate: nil
                 )
             case .fileChange:
                 let fileChangeState = FileChangeSystemRenderCache.renderState(
@@ -262,7 +304,11 @@ enum MessageRowRenderModelCache {
                     thinkingContent: nil,
                     thinkingText: nil,
                     thinkingActivityPreview: nil,
-                    commandStatus: nil
+                    commandStatus: nil,
+                    assistantProposedPlanCandidate: nil,
+                    assistantFallbackProposedPlan: nil,
+                    assistantRenderedPlanText: nil,
+                    assistantInferredQuestionnaireCandidate: nil
                 )
             case .toolActivity:
                 return .empty
@@ -275,7 +321,11 @@ enum MessageRowRenderModelCache {
                     thinkingContent: nil,
                     thinkingText: nil,
                     thinkingActivityPreview: nil,
-                    commandStatus: CommandExecutionStatusCache.status(messageID: message.id, text: displayText)
+                    commandStatus: CommandExecutionStatusCache.status(messageID: message.id, text: displayText),
+                    assistantProposedPlanCandidate: nil,
+                    assistantFallbackProposedPlan: nil,
+                    assistantRenderedPlanText: nil,
+                    assistantInferredQuestionnaireCandidate: nil
                 )
             case .subagentAction, .plan, .userInputPrompt, .chat:
                 return .empty

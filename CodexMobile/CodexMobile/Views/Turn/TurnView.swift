@@ -13,7 +13,6 @@ struct TurnView: View {
     let isWakingMacDisplayRecovery: Bool
 
     @Environment(CodexService.self) private var codex
-    @Environment(SubscriptionService.self) private var subscriptions
     @Environment(\.openURL) private var openURL
     @Environment(\.reconnectAction) private var reconnectAction
     @Environment(\.wakeMacDisplayAction) private var wakeMacDisplayAction
@@ -121,7 +120,18 @@ struct TurnView: View {
                     gitWorkingDirectory: gitWorkingDirectory
                 )),
                 structuredPromptReplacementComposer: { message in
-                    AnyView(composerStructuredPromptReplacement(message: message))
+                    AnyView(
+                        composerStructuredPromptReplacement(
+                            message: message,
+                            currentThread: resolvedThread,
+                            activeTurnID: activeTurnID,
+                            isThreadRunning: isThreadRunning,
+                            isEmptyThread: isEmptyThread,
+                            isWorktreeProject: isWorktreeProject,
+                            showsGitControls: showsGitControls,
+                            gitWorkingDirectory: gitWorkingDirectory
+                        )
+                    )
                 },
                 repositoryLoadingToastOverlay: AnyView(EmptyView()),
                 usageToastOverlay: AnyView(EmptyView()),
@@ -636,11 +646,20 @@ struct TurnView: View {
     private func handleSend() {
         isInputFocused = false
         viewModel.clearComposerAutocomplete()
-        viewModel.sendTurn(codex: codex, subscriptions: subscriptions, threadID: thread.id)
+        viewModel.sendTurn(codex: codex, threadID: thread.id)
     }
 
     @ViewBuilder
-    private func composerStructuredPromptReplacement(message: CodexMessage) -> some View {
+    private func composerStructuredPromptReplacement(
+        message: CodexMessage,
+        currentThread: CodexThread,
+        activeTurnID: String?,
+        isThreadRunning: Bool,
+        isEmptyThread: Bool,
+        isWorktreeProject: Bool,
+        showsGitControls: Bool,
+        gitWorkingDirectory: String?
+    ) -> some View {
         if let request = message.structuredUserInputRequest {
             let isDismissed = viewModel.isStructuredPlanPromptDismissed(request.requestID, codex: codex)
             let isDismissing = viewModel.isStructuredPlanPromptDismissing(request.requestID, codex: codex)
@@ -660,24 +679,24 @@ struct TurnView: View {
                 .padding(.top, 4)
             } else {
                 composerWithSubagentAccessory(
-                    currentThread: currentResolvedThread,
-                    activeTurnID: codex.activeTurnID(for: thread.id),
-                    isThreadRunning: codex.timelineState(for: thread.id).renderSnapshot.isThreadRunning,
-                    isEmptyThread: codex.timelineState(for: thread.id).renderSnapshot.messages.isEmpty,
-                    isWorktreeProject: currentResolvedThread.isManagedWorktreeProject,
-                    showsGitControls: codex.isConnected && currentResolvedThread.gitWorkingDirectory != nil,
-                    gitWorkingDirectory: currentResolvedThread.gitWorkingDirectory
+                    currentThread: currentThread,
+                    activeTurnID: activeTurnID,
+                    isThreadRunning: isThreadRunning,
+                    isEmptyThread: isEmptyThread,
+                    isWorktreeProject: isWorktreeProject,
+                    showsGitControls: showsGitControls,
+                    gitWorkingDirectory: gitWorkingDirectory
                 )
             }
         } else {
             composerWithSubagentAccessory(
-                currentThread: currentResolvedThread,
-                activeTurnID: codex.activeTurnID(for: thread.id),
-                isThreadRunning: codex.timelineState(for: thread.id).renderSnapshot.isThreadRunning,
-                isEmptyThread: codex.timelineState(for: thread.id).renderSnapshot.messages.isEmpty,
-                isWorktreeProject: currentResolvedThread.isManagedWorktreeProject,
-                showsGitControls: codex.isConnected && currentResolvedThread.gitWorkingDirectory != nil,
-                gitWorkingDirectory: currentResolvedThread.gitWorkingDirectory
+                currentThread: currentThread,
+                activeTurnID: activeTurnID,
+                isThreadRunning: isThreadRunning,
+                isEmptyThread: isEmptyThread,
+                isWorktreeProject: isWorktreeProject,
+                showsGitControls: showsGitControls,
+                gitWorkingDirectory: gitWorkingDirectory
             )
         }
     }
