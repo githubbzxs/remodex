@@ -1,0 +1,36 @@
+name: Build Unsigned IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-unsigned-ipa:
+    name: Build unsigned iOS IPA
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 输出 Xcode 版本
+        run: xcodebuild -version
+
+      - name: 解析 Swift Package 依赖
+        working-directory: CodexMobile
+        run: xcodebuild -resolvePackageDependencies -project CodexMobile.xcodeproj -scheme CodexMobile
+
+      - name: 构建未签名 IPA
+        run: bash CodexMobile/scripts/build-unsigned-ipa.sh
+
+      - name: 上传未签名 IPA 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: codexmobile-unsigned-ipa-${{ github.run_number }}
+          path: CodexMobile/build/unsigned-ipa/
+          if-no-files-found: error
+          retention-days: 14
