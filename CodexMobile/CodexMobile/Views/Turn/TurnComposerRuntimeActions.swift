@@ -6,6 +6,7 @@
 
 import Foundation
 
+@MainActor
 struct TurnComposerRuntimeActions {
     let selectModel: (String) -> Void
     let selectAutomaticReasoning: () -> Void

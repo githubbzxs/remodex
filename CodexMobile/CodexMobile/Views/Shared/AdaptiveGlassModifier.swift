@@ -19,15 +19,9 @@ private struct AdaptiveGlassModifier<S: Shape>: ViewModifier {
     let shape: S
 
     func body(content: Content) -> some View {
-        if #available(iOS 26, *), glassEnabled {
-            if regularStyle {
-                content.glassEffect(.regular, in: shape)
-            } else {
-                content.glassEffect(in: shape)
-            }
-        } else {
-            content.background(.thinMaterial, in: shape)
-        }
+        let _ = regularStyle
+        let _ = glassEnabled
+        content.background(.thinMaterial, in: shape)
     }
 }
 
@@ -37,11 +31,8 @@ private struct AdaptiveNavigationBarModifier: ViewModifier {
     @AppStorage(GlassPreference.storageKey) private var glassEnabled = true
 
     func body(content: Content) -> some View {
-        if #available(iOS 26, *), glassEnabled {
-            content
-        } else {
-            content
-        }
+        let _ = glassEnabled
+        content
     }
 }
 
@@ -52,11 +43,9 @@ private struct AdaptiveToolbarItemModifier<S: Shape>: ViewModifier {
     let shape: S
 
     func body(content: Content) -> some View {
-        if #available(iOS 26, *), glassEnabled {
-            content
-        } else {
-            content
-        }
+        let _ = glassEnabled
+        let _ = shape
+        content
     }
 }
 

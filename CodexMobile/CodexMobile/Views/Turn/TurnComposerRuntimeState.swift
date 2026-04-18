@@ -6,6 +6,7 @@
 
 import Foundation
 
+@MainActor
 struct TurnComposerRuntimeState {
     let reasoningDisplayOptions: [TurnComposerReasoningDisplayOption]
     let effectiveReasoningEffort: String?
